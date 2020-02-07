@@ -86,26 +86,5 @@ namespace MockHttpHandler.Tests
 
             Assert.ThrowsAsync<ArgumentException>(async () => await client.SendAsync(DefaultRequest));
         }
-
-        private async Task asdf()
-        {
-// Setup the handler
-var handler = new MockHttpMessageHandler();
-
-// Registers a response for any requests that use
-handler.RegisterResponse(
-    "http://my.site/path-to-url", 
-    new HttpResponseMessage(HttpStatusCode.OK).WithContent("Sample content"));
-
-var client = new HttpClient(handler);
-
-// Send your request
-var result = await client.SendAsync(new HttpRequestMessage(HttpMethod.Get, "http://my.site/path-to-url"));
-
-var resultContent = await result.Content.ReadAsStringAsync();
-
-// Outputs "Sample content"
-Console.WriteLine(resultContent);
-        }
     }
 }
