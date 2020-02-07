@@ -1,33 +1,85 @@
-﻿using System.Net;
+﻿using System;
+using System.Collections.Generic;
+using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace MockHttpHandler
 {
+    using RequestHandler = Func<HttpRequestMessage, Task<HttpResponseMessage>>;
+
     public class MockHttpMessageHandler : HttpMessageHandler
     {
-        private readonly string _response;
-        private readonly HttpStatusCode _statusCode;
-        public string Content { get; private set; }
+        private readonly Dictionary<Uri, RequestHandler> _handlers;
+        private readonly RequestHandler _defaultHandler;
 
-        public int NumberOfCalls { get; private set; }
-
-        public MockHttpMessageHandler(string response, HttpStatusCode statusCode)
+        public MockHttpMessageHandler()
         {
-            _response = response;
-            _statusCode = statusCode;
+            _handlers = new Dictionary<Uri, RequestHandler>();
+            _defaultHandler = CreateHandler(new HttpResponseMessage(HttpStatusCode.NotFound));
         }
 
-        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        public MockHttpMessageHandler(RequestHandler defaultHandler)
         {
-            NumberOfCalls++;
-            Content = await request.Content.ReadAsStringAsync() ?? string.Empty;
-            return new HttpResponseMessage
+            _handlers = new Dictionary<Uri, RequestHandler>();
+            _defaultHandler = defaultHandler;
+        }
+
+        public MockHttpMessageHandler(HttpResponseMessage defaultResponse)
+        {
+            _handlers = new Dictionary<Uri, RequestHandler>();
+
+            if (defaultResponse is null)
             {
-                StatusCode = _statusCode,
-                Content = new StringContent(_response)
-            };
+                _defaultHandler = null;
+            }
+            else
+            {
+                _defaultHandler = CreateHandler(defaultResponse);
+            }
+        }
+
+        public void RegisterResponse(Uri uri, RequestHandler handler)
+        {
+            _handlers.Add(uri, handler);
+        }
+
+        public void RegisterResponse(string uri, RequestHandler handler)
+        {
+            RegisterResponse(new Uri(uri), handler);
+        }
+
+        public void RegisterResponse(Uri uri, HttpResponseMessage response)
+        {
+            _handlers.Add(uri, CreateHandler(response));
+        }
+
+        public void RegisterResponse(string uri, HttpResponseMessage response)
+        {
+            RegisterResponse(new Uri(uri), CreateHandler(response));
+        }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var incomingUri = request.RequestUri;
+
+            if (!_handlers.TryGetValue(incomingUri, out var handler))
+            {
+                if (_defaultHandler is null)
+                {
+                    throw new ArgumentException($"No match for URI \"{incomingUri}\" was found, and no default handler has been provider", nameof(request));
+                }
+
+                handler = _defaultHandler;
+            }
+
+            return handler(request);
+        }
+
+        private static RequestHandler CreateHandler(HttpResponseMessage message)
+        {
+            return _ => Task.FromResult(message);
         }
     }
 }
