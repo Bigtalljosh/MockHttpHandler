@@ -17,7 +17,7 @@ namespace MockHttpHandler
         public MockHttpMessageHandler()
         {
             _handlers = new Dictionary<Uri, RequestHandler>();
-            _defaultHandler = new MockHttpResponse(HttpStatusCode.NotFound).Execute;
+            _defaultHandler = CreateHandler(new HttpResponseMessage(HttpStatusCode.NotFound));
         }
 
         public MockHttpMessageHandler(RequestHandler defaultHandler)
@@ -26,7 +26,7 @@ namespace MockHttpHandler
             _defaultHandler = defaultHandler;
         }
 
-        public MockHttpMessageHandler(MockHttpResponse defaultResponse)
+        public MockHttpMessageHandler(HttpResponseMessage defaultResponse)
         {
             _handlers = new Dictionary<Uri, RequestHandler>();
 
@@ -36,7 +36,7 @@ namespace MockHttpHandler
             }
             else
             {
-                _defaultHandler = defaultResponse.Execute;
+                _defaultHandler = CreateHandler(defaultResponse);
             }
         }
 
@@ -50,14 +50,14 @@ namespace MockHttpHandler
             RegisterResponse(new Uri(uri), handler);
         }
 
-        public void RegisterResponse(Uri uri, MockHttpResponse response)
+        public void RegisterResponse(Uri uri, HttpResponseMessage response)
         {
-            _handlers.Add(uri, response.Execute);
+            _handlers.Add(uri, CreateHandler(response));
         }
 
-        public void RegisterResponse(string uri, MockHttpResponse response)
+        public void RegisterResponse(string uri, HttpResponseMessage response)
         {
-            RegisterResponse(new Uri(uri), response.Execute);
+            RegisterResponse(new Uri(uri), CreateHandler(response));
         }
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -75,6 +75,11 @@ namespace MockHttpHandler
             }
 
             return handler(request);
+        }
+
+        private static RequestHandler CreateHandler(HttpResponseMessage message)
+        {
+            return _ => Task.FromResult(message);
         }
     }
 }

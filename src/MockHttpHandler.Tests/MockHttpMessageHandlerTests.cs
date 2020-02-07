@@ -23,7 +23,7 @@ namespace MockHttpHandler.Tests
         [Test]
         public void New_WithNullDefaultResponse_DoesNotThrow()
         {
-            MockHttpResponse response = null;
+            HttpResponseMessage response = null;
             Assert.DoesNotThrow(() => new MockHttpMessageHandler(response));
         }
 
@@ -33,7 +33,7 @@ namespace MockHttpHandler.Tests
             var status = (HttpStatusCode)504;
             var content = "Sample content";
 
-            var handler = new MockHttpMessageHandler(new MockHttpResponse(status, content));
+            var handler = new MockHttpMessageHandler(new HttpResponseMessage(status).WithContent(content));
             var client = new HttpClient(handler);
 
             var result = await client.SendAsync(DefaultRequest);
@@ -50,7 +50,7 @@ namespace MockHttpHandler.Tests
             var content = "Sample content";
 
             var handler = new MockHttpMessageHandler();
-            handler.RegisterResponse(_defaultUri, new MockHttpResponse(status, content));
+            handler.RegisterResponse(_defaultUri, new HttpResponseMessage(status).WithContent(content));
             var client = new HttpClient(handler);
 
             var result = await client.SendAsync(DefaultRequest);
@@ -66,8 +66,8 @@ namespace MockHttpHandler.Tests
             var status = (HttpStatusCode)504;
             var content = "Sample content";
 
-            var handler = new MockHttpMessageHandler(new MockHttpResponse(status, content));
-            handler.RegisterResponse("http://random.io", new MockHttpResponse(0));
+            var handler = new MockHttpMessageHandler(new HttpResponseMessage(status).WithContent(content));
+            handler.RegisterResponse("http://random.io", new HttpResponseMessage(0));
             var client = new HttpClient(handler);
 
             var result = await client.SendAsync(DefaultRequest);
@@ -80,11 +80,32 @@ namespace MockHttpHandler.Tests
         [Test]
         public void Send_WithUnmatchedHandlerAndNoDefault_ThrowsArgumentException()
         {
-            MockHttpResponse nullResponse = null;
+            HttpResponseMessage nullResponse = null;
             var handler = new MockHttpMessageHandler(nullResponse);
             var client = new HttpClient(handler);
 
             Assert.ThrowsAsync<ArgumentException>(async () => await client.SendAsync(DefaultRequest));
+        }
+
+        private async Task asdf()
+        {
+// Setup the handler
+var handler = new MockHttpMessageHandler();
+
+// Registers a response for any requests that use
+handler.RegisterResponse(
+    "http://my.site/path-to-url", 
+    new HttpResponseMessage(HttpStatusCode.OK).WithContent("Sample content"));
+
+var client = new HttpClient(handler);
+
+// Send your request
+var result = await client.SendAsync(new HttpRequestMessage(HttpMethod.Get, "http://my.site/path-to-url"));
+
+var resultContent = await result.Content.ReadAsStringAsync();
+
+// Outputs "Sample content"
+Console.WriteLine(resultContent);
         }
     }
 }
